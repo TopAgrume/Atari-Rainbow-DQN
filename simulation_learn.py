@@ -1,7 +1,7 @@
 # exercise.py
 import gymnasium as gym
 import numpy as np
-from agent import DeepQLearningAgent
+from deep_Q_learning_agent import DeepQLearningAgent
 from gymnasium.wrappers import AtariPreprocessing
 import ale_py
 from tqdm import tqdm
@@ -25,7 +25,7 @@ def main():
     env = gym.wrappers.FrameStackObservation(env, 4)
 
     n_actions = env.action_space.n
-    print("Available actions:", env.unwrapped.get_action_meanings())
+    print("Available actions:", env.unwrapped.get_action_meanings(), end="\n\n")
 
     agent = DeepQLearningAgent(
         learning_rate=2.5e-4,
@@ -53,7 +53,6 @@ def main():
         state = preprocess_observation(obs)
         done = False
         total_reward = 0
-        verbose = (episode + 1) % 1000 == 0
 
         while not done:
             action = agent.get_action(state)
@@ -62,7 +61,7 @@ def main():
             total_reward += reward
 
             next_state = preprocess_observation(obs)
-            agent.update(state, action, reward, next_state, done, verbose=(verbose and done))
+            agent.update(state, action, reward, next_state, done)
             state = next_state
             mini_batch += 1
 

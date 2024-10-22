@@ -4,7 +4,7 @@ import torch.optim as optim
 import random
 import numpy as np
 from collections import deque
-from DQN import create_DQN_model
+from DQN_model import create_DQN_model
 
 Action = int
 State = int
@@ -45,7 +45,7 @@ class DeepQLearningAgent():
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.loss_fn = nn.MSELoss()
 
-        print("========DeepQLearningAgent========")
+        print("======== DeepQLearningAgent ========")
         print("Learning rate:", self.learning_rate)
         print("Epsilon:", self.epsilon)
         print("Gamma:", self.gamma)
@@ -55,7 +55,7 @@ class DeepQLearningAgent():
         print("Current device used:", self.device)
         print("Optimizer:", "Adam()")
         print("Loss:", self.loss_fn)
-        print("==================================")
+        print("====================================", end="\n\n")
 
 
     def get_action(self, state: State) -> Action:
@@ -77,7 +77,7 @@ class DeepQLearningAgent():
                 # Retrieve the action that maximize the approximation of Q*(s, a, theta)
                 return q_values.argmax().item()
 
-    def update(self, state, action, reward, next_state, done, verbose):
+    def update(self, state, action, reward, next_state, done):
         """_summary_
 
         Args:
@@ -86,15 +86,11 @@ class DeepQLearningAgent():
             reward (_type_): _description_
             next_state (_type_): _description_
             done (function): _description_
-            verbose (_type_): _description_
         """
         self.memory.append((state, action, reward, next_state, done))
 
         if len(self.memory) < self.batch_size:
             return
-
-        if verbose:
-            print("Length of the current replays", len(self.memory))
 
         batch = random.sample(self.memory, self.batch_size)
         states, actions, rewards, next_states, dones = zip(*batch)
