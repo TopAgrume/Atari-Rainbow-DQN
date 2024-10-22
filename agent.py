@@ -119,7 +119,7 @@ class DeepQLearningAgent():
         loss.backward()
         self.optimizer.step()
 
-    def update_target_network(self, save_max=False):
+    def update_target_network(self, save_max=False, max_reward=0):
         """_summary_
 
         Args:
@@ -128,4 +128,4 @@ class DeepQLearningAgent():
         self.target_net.load_state_dict(self.policy_net.state_dict())
         torch.save(self.policy_net.state_dict(), "model_saves/model_load_state_dict.pt")
         if save_max:
-            torch.save(self.policy_net.state_dict(), "model_saves/max_model_load_state_dict.pt")
+            torch.save(self.policy_net.state_dict(), f"model_saves/max_model_load_state_dict_{max_reward}.pt")

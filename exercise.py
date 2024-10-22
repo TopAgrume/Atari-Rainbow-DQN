@@ -33,7 +33,7 @@ def main():
         gamma=0.99,
         n_actions=n_actions,
         batch_size=32,
-        memory_size=98000
+        memory_size=100000
     )
 
     n_episodes = 30000
@@ -42,7 +42,7 @@ def main():
     epsilon_min = 0.05
     one_epoch = 50000
 
-    mean_reward = 0
+    mean_reward = [0, 0]
     mini_batch = 0
     epoch_value = [0]
 
@@ -67,14 +67,15 @@ def main():
             mini_batch += 1
 
             if done:
-                mean_reward += total_reward
+                mean_reward[0] += total_reward
+                mean_reward[1] += 1
 
             if mini_batch % one_epoch == 0:
-                mean_reward = round(mean_reward / one_epoch, 2)
+                mean_reward = round(mean_reward[0] / mean_reward[1], 2)
                 print(f"Mean reward for a new epoch (minibatch {mini_batch - one_epoch} to {one_epoch}):", mean_reward)
                 print("Current agent epsilon:", round(agent.epsilon, 2))
                 epoch_value.append(mean_reward)
-                mean_reward = 0
+                mean_reward = [0, 0]
 
         # Decay epsilon
         agent.epsilon = max(epsilon_min, agent.epsilon * epsilon_decay)
@@ -86,7 +87,7 @@ def main():
                 max_reward = epoch_value[-1]
                 save_max_network = True
                 print(f"New max_reward net with r={max_reward}")
-            agent.update_target_network(save_max=save_max_network)
+            agent.update_target_network(save_max=save_max_network, max_reward=max_reward)
 
             plt.figure(figsize=(15, 10))
             plt.plot(np.arange(len(epoch_value)), np.array(epoch_value))
@@ -94,6 +95,7 @@ def main():
             plt.xlabel("Training epochs")
             plt.ylabel("Average reward per episode")
             plt.savefig(f"figures/reward_breakout_epoch_{len(epoch_value) - 1}.png")
+            plt.close()
 
 
     env.close()
