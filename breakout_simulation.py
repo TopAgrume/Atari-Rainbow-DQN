@@ -54,9 +54,11 @@ class BreakoutTrainer:
         # Setup environment
         gym.register_envs(ale_py)
 
-        if render_type:
-            self.env = gym.make("ALE/Breakout-v5", obs_type="rgb", frameskip=4, render_mode=render_type)
+        if render_type is not None:
+            print("Human rendering...")
+            self.env = gym.make("ALE/Breakout-v5", obs_type="grayscale", frameskip=4, render_mode=render_type)
         else:
+            print("Training rendering...")
             self.env = gym.make("ALE/Breakout-v5", obs_type="grayscale", frameskip=4)
 
         self.env = AtariPreprocessing(self.env, frame_skip=1)
@@ -123,23 +125,23 @@ class BreakoutTrainer:
                     mean_reward[0] += total_reward
                     mean_reward[1] += 1
 
-                # Print statistics (every 50000 batchs)
-                if mini_batch % one_epoch == 0:
-                    avg_reward = round(mean_reward[0] / mean_reward[1], 2)
-                    current_epoch = start_epoch + (len(self.epoch_values) - start_epoch)
+            # Print statistics (~ every 50000 batchs)
+            if mini_batch >= one_epoch:
+                avg_reward = round(mean_reward[0] / mean_reward[1], 2)
+                current_epoch = start_epoch + (len(self.epoch_values) - start_epoch)
 
-                    print(f"\nEpoch {current_epoch} stats:")
-                    print(f"Mean reward: {avg_reward}")
-                    print(f"Current epsilon: {round(self.agent.epsilon, 2)}")
+                print(f"\nEpoch {current_epoch} stats:")
+                print(f"Mean reward: {avg_reward}")
+                print(f"Current epsilon: {round(self.agent.epsilon, 2)}")
 
-                    self.epoch_values.append(avg_reward)
-                    mean_reward = [0, 0]
+                self.epoch_values.append(avg_reward)
+                mean_reward = [0, 0]
+                mini_batch = 0
 
-                    self._save_training_state(current_epoch)
+                self._save_training_state(current_epoch)
 
             agent_eps = round(self.agent.epsilon, 2)
-            avg_reward = round(mean_reward[0] / mean_reward[1], 2)
-            pbar.set_description(desc=f"Episode: {episode}, Reward: {avg_reward}, Epsilon: {agent_eps} |")
+            pbar.set_description(desc=f"Episode: {episode}, Last reward: {self.epoch_values[-1]}, Epsilon: {agent_eps} |")
 
             # Decay epsilon
             self.agent.epsilon = max(self.epsilon_min, self.agent.epsilon * self.epsilon_decay)
