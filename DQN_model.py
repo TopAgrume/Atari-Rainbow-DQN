@@ -1,46 +1,97 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class DQN(nn.Module):
-    """_summary_
+class DuelingDQN(nn.Module):
+    """Dueling Deep Q-Network (DQN) architecture implementation.
+
+    This network uses a dueling architecture that separates state value and action
+    advantage estimations. This separation helps in better policy evaluation by
+    explicitly decomposing the Q-value into the value of the state and the advantage
+    of each action.
+
+    See implementation here: https://lzzmm.github.io/2021/11/05/breakout/
+
+    The network processes 4 stacked frames as input through 3 convolutional layers,
+    followed by separate streams for value and advantage estimation.
 
     Args:
-        nn (_type_): _description_
+        n_actions (int): Number of possible actions in the action space
     """
-    def __init__(self, n_actions):
-        """_summary_
+    def __init__(self, n_actions: int):
+        """Initialization of the Dueling DQN architecture.
 
         Args:
-            n_actions (_type_): _description_
+            n_actions (int): Number of possible actions the agent can take
         """
-        super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(4, 16, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
-        self.fc1 = nn.Linear(2592, 256)
-        self.fc2 = nn.Linear(256, n_actions)
+        # Convolutional layers for feature extraction
+        super(DuelingDQN, self).__init__()
+        self.conv1 = nn.Conv2d(4, 32, kernel_size=8, stride=4, bias=False)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2, bias=False)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, bias=False)
 
-    def forward(self, x):
-        """_summary_
+        # Value stream layers
+        self.fc1_a = nn.Linear(64 * 7 * 7, 512)     # Advantage stream first dense layer
+        self.fc2_a = nn.Linear(512, n_actions)      # Advantage stream output layer
+
+        # Advantage stream layers
+        self.fc1_b = nn.Linear(64 * 7 * 7, 512)     # State-value stream first dense layer
+        self.fc2_b = nn.Linear(512, 1)              # State-value stream output layer
+
+        self.n_actions = n_actions
+
+    def forward(self, x: torch.Tensor):
+        """
+        Processes the input through convolutional layers, then splits into value and
+        advantage streams. Combines them using the dueling architecture formula:
+        Q(s,a) = V(s) + (A(s,a) - mean(A(s,a)))
 
         Args:
-            x (_type_): _description_
+            x (torch.Tensor): Input tensor of shape (batch_size, 4, height, width)
+                            containing 4 stacked frames
 
         Returns:
-            _type_: _description_
+            torch.Tensor: Q-values for each action, shape (batch_size, n_actions)
         """
+        # Shared convolutional layers
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
-        x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        return self.fc2(x)
+        x = F.relu(self.conv3(x))
+        xv = x.view(x.size(0), -1)
 
-def create_DQN_model(n_actions):
-    """_summary_
+        # Value stream
+        vs = F.relu(self.fc1_b(xv))
+        vs = self.fc2_b(vs).expand(x.size(0), self.n_actions)
+
+        # Advantage stream
+        asa = F.relu(self.fc1_a(xv))
+        asa = F.relu(self.fc2_a(asa))
+
+        # Combine value and advantage streams
+        # Q(s,a) = V(s) + (A(s,a) - mean(A(s,a)))
+        return vs + asa - asa.mean(1).unsqueeze(1).expand(x.size(0), self.n_actions)
+
+    def save_model(self, filename: str):
+        """Save the model's state dict to a file.
+
+        The model is saved in the './models/' directory
+        """
+        torch.save(self.state_dict(), './models/' + filename + '.pth')
+
+    def load_model(self, filename: str):
+        """Load the model's state dict from a file.
+
+        The model is loaded from the './models/' directory
+        """
+        self.load_state_dict(torch.load('./models/' + filename + '.pth', weights_only=True))
+
+def create_DQN_model(n_actions: int) -> DuelingDQN:
+    """Create a new Dueling DQN model.
 
     Args:
-        n_actions (_type_): _description_
+        n_actions (int): Number of possible actions in the action space
 
     Returns:
-        _type_: _description_
+        DuelingDQN: Initialized Dueling DQN model
     """
-    return DQN(n_actions)
+    return DuelingDQN(n_actions)
