@@ -6,20 +6,6 @@ import ale_py
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import os
-import torch
-
-def preprocess_observation(obs: np.ndarray) -> np.ndarray:
-    """Preprocess Atari game frame for the DQN.
-
-    Normalizes pixel values to range [0,1] and converts to float32.
-
-    Args:
-        obs (np.ndarray): Raw observation frame from the Atari environment
-
-    Returns:
-        np.ndarray: Preprocessed observation as float32 array with values in [0,1]
-    """
-    return obs.astype(np.float32) / 255.0
 
 
 class BreakoutTrainer:
@@ -28,13 +14,10 @@ class BreakoutTrainer:
     def __init__(
             self,
             learning_rate: float = 0.0001,
-            epsilon: float = 1.0,
             gamma: float = 0.99,
             batch_size: int = 32,
             memory_size: int = 100000,
-            epsilon_decay: float = 0.9999,
-            epsilon_min: float = 0.05,
-            target_update_frequency: int = 100,
+            target_update_frequency: int = 10000,
             render_type: str = None,
             continue_training: bool = False,
             model_path: str = None,
@@ -45,12 +28,9 @@ class BreakoutTrainer:
 
         Args:
             learning_rate: Learning rate for the Adam optimizer
-            epsilon: Initial exploration rate
             gamma: Discount factor for future rewards
             batch_size: Size of training batches
             memory_size: Size of replay memory
-            epsilon_decay: Rate at which epsilon decays
-            epsilon_min: Minimum value for epsilon
             target_update_frequency: How often to update target network
         """
         # Setup environment
@@ -71,7 +51,6 @@ class BreakoutTrainer:
         # Init agent
         self.agent = DeepQLearningAgent(
             learning_rate=learning_rate,
-            epsilon=epsilon,
             gamma=gamma,
             n_actions=n_actions,
             batch_size=batch_size,
@@ -80,18 +59,20 @@ class BreakoutTrainer:
         )
 
         # Training parameters
-        self.epsilon_decay = epsilon_decay
-        self.epsilon_min = epsilon_min
         self.target_update_frequency = target_update_frequency
 
         self.epoch_values = [0]
-        self.max_reward = 0
+        self.std_values = [0]
+        self.quantile_values = [[0, 0]]
+        self.max_rewards = [0]
+        self.min_rewards = [0]
+        self.mean_reward = 0
 
         if continue_training and model_path:
             self._load_training_state(model_path, history_path)
 
         print("Action meanings:", self.env.unwrapped.get_action_meanings())
-
+        print("Target net update frquency:", target_update_frequency, end="\n\n")
 
     def train(self, n_episodes: int = 20000, one_epoch: int = 50000):
         """Train the DQN agent on Breakout.
@@ -100,71 +81,86 @@ class BreakoutTrainer:
             n_episodes (int): Number of episodes to train for
             one_epoch (int): Number of steps per training epoch
         """
-        mean_reward = [0, 0]  # [total_reward, count]
-        mini_batch = 0
+        step = 0
+        max_reward = float('-inf')
+        min_reward = float('inf')
+
+        rewards_epoch = []
         start_epoch = len(self.epoch_values)
 
         pbar = tqdm(range(n_episodes), desc="Starting")
         for episode in pbar:
-            obs, _ = self.env.reset()
-            state = preprocess_observation(obs)
+            state, _ = self.env.reset()
             done = False
-            total_reward = 0
-            agent_eps = round(self.agent.epsilon, 2)
+            total_reward = 0.0
 
             while not done:
                 # Get action and step environment
                 action = self.agent.get_action(state)
-                obs, reward, terminated, truncated, _ = self.env.step(action)
+                next_state, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
                 total_reward += reward
 
                 # Update agent
-                next_state = preprocess_observation(obs)
                 self.agent.update(state, action, reward, next_state, done)
                 state = next_state
-                mini_batch += 1
+                step += 1
 
                 if done:
-                    mean_reward[0] += total_reward
-                    mean_reward[1] += 1
+                    rewards_epoch.append(total_reward)
 
                     # Update progression description
-                    avg_reward = round(mean_reward[0] / mean_reward[1], 2)
+                    avg_reward = round(np.mean(rewards_epoch).item(), 2)
+                    max_reward = round(max(max_reward, total_reward), 2)
+                    min_reward = round(min(min_reward, total_reward), 2)
+                    std_reward = round(np.std(rewards_epoch).item(), 2)
+                    quantiles = np.percentile(rewards_epoch, [25, 75])
+
                     pbar.set_description(
-                        desc=f"Episode: {episode}, Last reward: {avg_reward}, Epsilon: {agent_eps} |"
+                        desc=f"Episode: {episode} (mean: {avg_reward}, std: {std_reward}, min: {min_reward}, max: {max_reward}, percentiles: {quantiles}) |"
                     )
 
+                # Print and save statistics (~ every 50000 batchs)
+                if step % one_epoch == 0:
+                    current_epoch = start_epoch + (len(self.epoch_values) - start_epoch)
 
-            # Print statistics (~ every 50000 batchs)
-            if mini_batch >= one_epoch:
-                avg_reward = round(mean_reward[0] / mean_reward[1], 2)
-                current_epoch = start_epoch + (len(self.epoch_values) - start_epoch)
+                    avg_reward = round(np.mean(rewards_epoch).item(), 2)
+                    max_reward = round(max(max_reward, total_reward), 2)
+                    min_reward = round(min(min_reward, total_reward), 2)
+                    std_reward = round(np.std(rewards_epoch).item(), 2)
+                    quantiles = np.percentile(rewards_epoch, [25, 75])
 
-                print(f"\nEpoch {current_epoch} stats:")
-                print(f"Mean reward: {avg_reward}")
-                print(f"Current epsilon: {round(self.agent.epsilon, 2)}")
+                    print(f"\n===== Epoch {current_epoch} stats =====")
+                    print(f"Min reward: {min_reward}")
+                    print(f"Max reward: {max_reward}")
+                    print(f"Mean reward: {avg_reward}")
+                    print(f"Std reward: {std_reward}")
+                    print(f"Quantiles (25%, 75%): {quantiles}\n")
 
-                self.epoch_values.append(avg_reward)
-                mean_reward = [0, 0]
-                mini_batch = 0
+                    self.epoch_values.append(avg_reward)
+                    self.std_values.append(std_reward)
+                    self.quantile_values.append(quantiles)
+                    self.min_rewards.append(min_reward)
+                    self.max_rewards.append(max_reward)
 
-                self._save_training_state(current_epoch)
+                    # Plot and save training progress
+                    self._plot_progress()
+                    self._save_training_state(current_epoch, max_reward, min_reward)
 
-            # Decay epsilon
-            self.agent.epsilon = max(self.epsilon_min, self.agent.epsilon * self.epsilon_decay)
+                    rewards_epoch.clear()
+                    max_reward = float('-inf')
+                    min_reward = float('inf')
 
-            # Update target network
-            if (episode + 1) % self.target_update_frequency == 0:
-                save_max = False
-                if self.epoch_values[-1] > self.max_reward:
-                    self.max_reward = self.epoch_values[-1]
-                    save_max = True
-                    print(f"New best model with avg reward: {self.max_reward}")
-                self.agent.update_target_network(save_max=save_max, max_reward=self.max_reward)
+                # Update target network
+                if step % self.target_update_frequency == 0:
+                    save_max = False
+                    if self.epoch_values[-1] > self.mean_reward:
+                        self.mean_reward = self.epoch_values[-1]
+                        save_max = True
+                        print(f"==> New best model with avg reward: {self.mean_reward}")
+                    self.agent.update_target_network(save_max=save_max, max_reward=self.mean_reward)
 
-                # Plot training progress
-                self._plot_progress()
+
 
     def play_games(self, num_episodes: int = 5):
         """Let the trained agent play games without learning.
@@ -173,17 +169,15 @@ class BreakoutTrainer:
             num_episodes (int): Number of episodes to play
         """
         for episode in range(num_episodes):
-            obs, _ = self.env.reset()
-            state = preprocess_observation(obs)
+            state, _ = self.env.reset()
             done = False
             total_reward = 0
 
             while not done:
                 action = self.agent.get_action(state)
-                obs, reward, terminated, truncated, _ = self.env.step(action)
+                state, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
                 total_reward += reward
-                state = preprocess_observation(obs)
 
             print(f"Episode {episode + 1} reward: {total_reward}")
 
@@ -194,8 +188,22 @@ class BreakoutTrainer:
             epoch_values (list): List of average rewards per epoch
         """
         plt.figure(figsize=(15, 10))
-        plt.plot(np.arange(len(self.epoch_values)), np.array(self.epoch_values))
-        plt.title("Average reward on breakout")
+        epochs = np.arange(len(self.epoch_values))
+        epoch_values = np.array(self.epoch_values)
+        std_dev = np.array(self.std_values)
+        quantiles = np.array(self.quantile_values)
+        mins = np.array(self.min_rewards)
+        maxs = np.array(self.max_rewards)
+
+        plt.plot(epochs, epoch_values, label="average reward", color='blue')
+        plt.plot(epochs, mins, label="minimum reward", color='cyan')
+        plt.plot(epochs, maxs, label="maximum reward", color='cyan')
+        plt.fill_between(epochs, epoch_values - std_dev, epoch_values + std_dev,
+                     color='blue', alpha=0.2, label="std dev")
+        plt.plot(epochs, quantiles[:, 0], 'r--', label="25th percentile")
+        plt.plot(epochs, quantiles[:, 1], 'g--', label="75th percentile")
+
+        plt.title("Average reward with std dev quantiles on breakout")
         plt.xlabel("Training epochs")
         plt.ylabel("Average reward per episode")
         plt.savefig(f"figures/reward_breakout_epoch_{len(self.epoch_values) - 1}.png")
@@ -215,22 +223,23 @@ class BreakoutTrainer:
         if history_path and os.path.exists(history_path):
             print(f"Loading training history from {history_path}...")
             history_data = np.load(history_path, allow_pickle=True).item()
-            self.epoch_values = history_data.get('epoch_values', [0])
-            self.max_reward = history_data.get('max_reward', 0)
-            self.agent.epsilon = history_data.get('epsilon', self.agent.epsilon)
+            self.epoch_values = history_data.get('reward', [0])
+            self.mean_reward = history_data.get('mean_reward', 0)
             print(f"Restored training from epoch {len(self.epoch_values)-1}")
-            print(f"Continuing with epsilon: {self.agent.epsilon:.4f}")
-            print(f"Previous max reward: {self.max_reward}")
+            print(f"Previous max reward: {self.mean_reward}")
 
-    def _save_training_state(self, epoch: int):
+    def _save_training_state(self, epoch: int, max_reward: int, min_reward: int):
         """Save current training state including history.
 
         Args:
             epoch: Current training epoch
         """
         history_data = {
-            'epoch_values': self.epoch_values,
-            'max_reward': self.max_reward,
-            'epsilon': self.agent.epsilon
+            'mean_rewards': self.epoch_values,
+            'best_mean_reward': self.mean_reward,
+            'std_values': self.std_values,
+            'quantile_values': self.quantile_values,
+            'min_rewards': self.min_rewards,
+            'max_rewards': self.max_rewards
         }
         np.save(f'meta_data/training_history_epoch_{epoch}.npy', history_data)

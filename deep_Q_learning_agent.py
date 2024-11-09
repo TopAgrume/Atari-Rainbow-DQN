@@ -13,13 +13,11 @@ class DeepQLearningAgent():
     the "Playing Atari with Deep Reinforcement Learning" paper:
     - Experience replay buffer to store and sample transitions
     - Separate target network for stable training
-    - Epsilon-greedy exploration strategy
     - Dueling DQN architecture
     """
     def __init__(
         self,
         learning_rate: float,
-        epsilon: float,
         gamma: float,
         n_actions: int,
         batch_size: int = 32,
@@ -30,7 +28,6 @@ class DeepQLearningAgent():
 
         Args:
             learning_rate (float): Learning rate for the Adam optimizer
-            epsilon (float): Initial exploration rate for epsilon-greedy policy
             gamma (float): Discount factor for future rewards
             n_actions (int): Number of possible actions in the environment
             batch_size (int, optional): Size of training batches. Defaults to 32.
@@ -38,7 +35,6 @@ class DeepQLearningAgent():
         """
         # Agent parameters
         self.learning_rate = learning_rate
-        self.epsilon = epsilon
         self.gamma = gamma
         self.n_actions = n_actions
         self.batch_size = batch_size
@@ -72,18 +68,14 @@ class DeepQLearningAgent():
         Returns:
             int: Selected action index
         """
-        # Exploration: random action
-        if random.random() < self.epsilon:
-            return random.randint(0, self.n_actions - 1)
 
         # Exploitation: best action according to policy network
-        else:
-            with torch.no_grad():
-                state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-                q_values = self.policy_net(state)
+        with torch.no_grad():
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            q_values = self.policy_net(state)
 
-                # Action that maximize the approximation of Q*(s, a, theta)
-                return q_values.argmax().item()
+            # Action that maximize the approximation of Q*(s, a, theta)
+            return q_values.argmax().item()
 
     def update(
             self,
@@ -206,9 +198,8 @@ class DeepQLearningAgent():
         Args:
             memory_size (int): Size of replay memory
         """
-        print("======== DeepQLearningAgent ========")
+        print("\n======== DeepQLearningAgent ========")
         print("Learning rate:", self.learning_rate)
-        print("Epsilon:", self.epsilon)
         print("Gamma:", self.gamma)
         print("Batch size:", self.batch_size)
         print("Max memory size:", memory_size)

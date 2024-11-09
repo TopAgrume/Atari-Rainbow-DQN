@@ -5,12 +5,10 @@ def train(args):
     """Train the agent."""
     trainer = BreakoutTrainer(
         learning_rate=args.learning_rate,
-        epsilon=args.epsilon,
         gamma=args.gamma,
         batch_size=args.batch_size,
         memory_size=args.memory_size,
-        epsilon_decay=args.epsilon_decay,
-        epsilon_min=args.epsilon_min,
+        target_update_frequency=args.target_update_frequency,
         continue_training=args.continue_training,
         model_path=args.model_path,
         history_path=args.history_path,
@@ -22,7 +20,7 @@ def train(args):
 
 def play(args):
     """Load a trained model and play games."""
-    trainer = BreakoutTrainer(epsilon=0.05, render_type="human")
+    trainer = BreakoutTrainer(render_type="human")
     trainer.agent.load_saved_model(args.model_path)
 
     print(f"Playing {args.episodes} episodes...")
@@ -36,12 +34,10 @@ def main():
     # Training arguments
     train_parser = subparsers.add_parser('train', help='Train the agent')
     train_parser.add_argument('--learning-rate', type=float, default=0.0001)
-    train_parser.add_argument('--epsilon', type=float, default=1.0)
     train_parser.add_argument('--gamma', type=float, default=0.99)
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--memory-size', type=int, default=100000)
-    train_parser.add_argument('--epsilon-decay', type=float, default=0.9999)
-    train_parser.add_argument('--epsilon-min', type=float, default=0.05)
+    train_parser.add_argument('--target-update-frequency', type=int, default=10000)
     train_parser.add_argument('--episodes', type=int, default=20000)
     train_parser.add_argument('--epoch-size', type=int, default=50000)
     train_parser.add_argument('--continue_training', type=bool, default=False)

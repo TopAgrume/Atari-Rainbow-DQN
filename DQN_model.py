@@ -78,7 +78,7 @@ class DuelingDQN(nn.Module):
         """
         self.fc1_a.reset_noise()
         self.fc2_a.reset_noise()
-        self.fc1_a.reset_noise()
+        self.fc1_b.reset_noise()
         self.fc2_b.reset_noise()
 
     def save_model(self, filename: str):
