@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import random
 import numpy as np
-from collections import deque
 from DQN_model import create_DQN_model
+from torchrl.data import ListStorage, PrioritizedReplayBuffer
 
 class DeepQLearningAgent():
     """Deep Q-Learning agent implementation with experience replay and target network.
@@ -23,7 +23,8 @@ class DeepQLearningAgent():
         gamma: float,
         n_actions: int,
         batch_size: int = 32,
-        memory_size: int = 100000
+        memory_size: int = 100000,
+        replay_start_size: int = 80000
     ):
         """Initialize the Deep Q-Learning agent.
 
@@ -41,9 +42,12 @@ class DeepQLearningAgent():
         self.gamma = gamma
         self.n_actions = n_actions
         self.batch_size = batch_size
+        self.replay_start_size = replay_start_size
 
         # Replay memory
-        self.memory = deque(maxlen=memory_size)
+        self.memory = PrioritizedReplayBuffer(
+            alpha=0.6, beta=0.5, storage=ListStorage(memory_size)
+        )
 
         # Initialize networks and torch
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -51,20 +55,12 @@ class DeepQLearningAgent():
         self.target_net = create_DQN_model(n_actions).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
+
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
         self.loss_fn = nn.MSELoss()
 
-        print("======== DeepQLearningAgent ========")
-        print("Learning rate:", self.learning_rate)
-        print("Epsilon:", self.epsilon)
-        print("Gamma:", self.gamma)
-        print("Batch size:", self.batch_size)
-        print("Max memory size:", memory_size)
-        print("Number of actions:", self.n_actions, end="\n\n")
-        print("Current device used:", self.device)
-        print("Optimizer:", "Adam()")
-        print("Loss:", self.loss_fn)
-        print("====================================", end="\n\n")
+        # Print params
+        self._print_init_info(memory_size)
 
 
     def get_action(self, state: np.ndarray) -> int:
@@ -109,17 +105,23 @@ class DeepQLearningAgent():
             done (bool): Whether the episode ended
         """
         # Store transition in replay memory
-        self.memory.append((state, action, reward, next_state, done))
+        self._save_to_memory(state, action, reward, next_state, done)
 
-        if len(self.memory) < self.batch_size:
+        if len(self.memory) < self.replay_start_size:
             return
+        elif len(self.memory) == self.replay_start_size:
+            print(f"Learning phase started, memory length: {self.replay_start_size}")
 
         # Sample and process batch
-        batch = random.sample(self.memory, self.batch_size)
+        batch = self.memory.sample(self.batch_size)
         states, actions, rewards, next_states, dones = self._process_batch(batch)
 
+        # Reset NoisyLinear layers
+        self.policy_net.reset_noise()
+        self.target_net.reset_noise()
+
         # Compute target Q-values using target network
-        next_q_values = self.target_net(next_states).max(1)[0].detach()
+        next_q_values = self.target_net(next_states).max(1).values.detach()
         target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
         # Compute the current Q-values and loss
@@ -140,7 +142,7 @@ class DeepQLearningAgent():
             max_reward (float, optional): Current max reward (for filename). Defaults to 0.
         """
         self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.policy_net.save_model("dueling_dqn")
+        self.policy_net.save_model("current_dueling_dqn")
 
         # Save the best model
         if save_max:
@@ -155,6 +157,32 @@ class DeepQLearningAgent():
         self.policy_net.load_model(filename)
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
+    def _save_to_memory(self,
+            state: np.ndarray,
+            action: int,
+            reward: float,
+            next_state: np.ndarray,
+            done: bool
+        ):
+        """_summary_
+
+        Args:
+            state (np.ndarray): _description_
+            action (int): _description_
+            reward (float): _description_
+            next_state (np.ndarray): _description_
+            done (bool): _description_
+        """
+        state = torch.FloatTensor(state)
+        next_state = torch.FloatTensor(next_state)
+
+        action = torch.tensor(action, dtype=torch.uint8)
+        done = torch.tensor(done, dtype=torch.uint8)
+        reward = torch.tensor(reward, dtype=torch.int8)
+        reward = torch.clip(input=reward, min=-1, max=1)
+
+        self.memory.add((state, action, reward, next_state, done))
+
     def _process_batch(self, batch):
         """Process a batch of transitions into tensors for training.
 
@@ -164,13 +192,11 @@ class DeepQLearningAgent():
         Returns:
             tuple: Processed tensors for each object.
         """
-        states, actions, rewards, next_states, dones = zip(*batch)
-
-        states = torch.FloatTensor(np.array(states)).to(self.device)
-        actions = torch.LongTensor(np.array(actions)).to(self.device)
-        rewards = torch.FloatTensor(np.array(rewards)).to(self.device)
-        next_states = torch.FloatTensor(np.array(next_states)).to(self.device)
-        dones = torch.FloatTensor(np.array(dones)).to(self.device)
+        states = batch[0].to(self.device)
+        actions = batch[1].to(torch.int64).to(self.device)
+        rewards = batch[2].to(self.device)
+        next_states = batch[3].to(self.device)
+        dones = batch[4].to(self.device)
 
         return states, actions, rewards, next_states, dones
 

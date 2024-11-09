@@ -6,6 +6,7 @@ import ale_py
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import os
+import torch
 
 def preprocess_observation(obs: np.ndarray) -> np.ndarray:
     """Preprocess Atari game frame for the DQN.
@@ -18,7 +19,7 @@ def preprocess_observation(obs: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: Preprocessed observation as float32 array with values in [0,1]
     """
-    return np.array(obs).astype(np.float32) / 255.0
+    return obs.astype(np.float32) / 255.0
 
 
 class BreakoutTrainer:
@@ -26,7 +27,7 @@ class BreakoutTrainer:
 
     def __init__(
             self,
-            learning_rate: float = 0.0000625,
+            learning_rate: float = 0.0001,
             epsilon: float = 1.0,
             gamma: float = 0.99,
             batch_size: int = 32,
@@ -37,7 +38,8 @@ class BreakoutTrainer:
             render_type: str = None,
             continue_training: bool = False,
             model_path: str = None,
-            history_path: str = None
+            history_path: str = None,
+            replay_start_size: int = 80000
         ):
         """Initialize the Breakout trainer.
 
@@ -61,7 +63,7 @@ class BreakoutTrainer:
             print("Training rendering...")
             self.env = gym.make("ALE/Breakout-v5", obs_type="grayscale", frameskip=4)
 
-        self.env = AtariPreprocessing(self.env, frame_skip=1)
+        self.env = AtariPreprocessing(self.env, frame_skip=1, scale_obs=True)
         self.env = gym.wrappers.FrameStackObservation(self.env, 4)
         n_actions = self.env.action_space.n
 
@@ -73,7 +75,8 @@ class BreakoutTrainer:
             gamma=gamma,
             n_actions=n_actions,
             batch_size=batch_size,
-            memory_size=memory_size
+            memory_size=memory_size,
+            replay_start_size=replay_start_size
         )
 
         # Training parameters
@@ -90,7 +93,7 @@ class BreakoutTrainer:
         print("Action meanings:", self.env.unwrapped.get_action_meanings())
 
 
-    def train(self, n_episodes: int = 30000, one_epoch: int = 50000):
+    def train(self, n_episodes: int = 20000, one_epoch: int = 50000):
         """Train the DQN agent on Breakout.
 
         Args:
@@ -107,6 +110,7 @@ class BreakoutTrainer:
             state = preprocess_observation(obs)
             done = False
             total_reward = 0
+            agent_eps = round(self.agent.epsilon, 2)
 
             while not done:
                 # Get action and step environment
@@ -125,6 +129,13 @@ class BreakoutTrainer:
                     mean_reward[0] += total_reward
                     mean_reward[1] += 1
 
+                    # Update progression description
+                    avg_reward = round(mean_reward[0] / mean_reward[1], 2)
+                    pbar.set_description(
+                        desc=f"Episode: {episode}, Last reward: {avg_reward}, Epsilon: {agent_eps} |"
+                    )
+
+
             # Print statistics (~ every 50000 batchs)
             if mini_batch >= one_epoch:
                 avg_reward = round(mean_reward[0] / mean_reward[1], 2)
@@ -139,9 +150,6 @@ class BreakoutTrainer:
                 mini_batch = 0
 
                 self._save_training_state(current_epoch)
-
-            agent_eps = round(self.agent.epsilon, 2)
-            pbar.set_description(desc=f"Episode: {episode}, Last reward: {self.epoch_values[-1]}, Epsilon: {agent_eps} |")
 
             # Decay epsilon
             self.agent.epsilon = max(self.epsilon_min, self.agent.epsilon * self.epsilon_decay)
@@ -226,11 +234,3 @@ class BreakoutTrainer:
             'epsilon': self.agent.epsilon
         }
         np.save(f'meta_data/training_history_epoch_{epoch}.npy', history_data)
-
-
-
-
-
-
-
-

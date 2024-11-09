@@ -13,7 +13,8 @@ def train(args):
         epsilon_min=args.epsilon_min,
         continue_training=args.continue_training,
         model_path=args.model_path,
-        history_path=args.history_path
+        history_path=args.history_path,
+        replay_start_size=args.replay_start_size
     )
 
     trainer.train(n_episodes=args.episodes, one_epoch=args.epoch_size)
@@ -34,18 +35,19 @@ def main():
 
     # Training arguments
     train_parser = subparsers.add_parser('train', help='Train the agent')
-    train_parser.add_argument('--learning-rate', type=float, default=0.0000625)
+    train_parser.add_argument('--learning-rate', type=float, default=0.0001)
     train_parser.add_argument('--epsilon', type=float, default=1.0)
     train_parser.add_argument('--gamma', type=float, default=0.99)
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--memory-size', type=int, default=100000)
     train_parser.add_argument('--epsilon-decay', type=float, default=0.9999)
     train_parser.add_argument('--epsilon-min', type=float, default=0.05)
-    train_parser.add_argument('--episodes', type=int, default=40000)
+    train_parser.add_argument('--episodes', type=int, default=20000)
     train_parser.add_argument('--epoch-size', type=int, default=50000)
     train_parser.add_argument('--continue_training', type=bool, default=False)
     train_parser.add_argument('--model-path', type=str, default=None)
     train_parser.add_argument('--history-path', type=str, default=None)
+    train_parser.add_argument('--replay-start-size', type=int, default=80000)
 
     # Eval arguments
     play_parser = subparsers.add_parser('play', help='Play using a trained model')

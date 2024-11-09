@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchrl.modules import NoisyLinear
 
 class DuelingDQN(nn.Module):
     """Dueling Deep Q-Network (DQN) architecture implementation.
@@ -24,19 +25,20 @@ class DuelingDQN(nn.Module):
         Args:
             n_actions (int): Number of possible actions the agent can take
         """
-        # Convolutional layers for feature extraction
         super(DuelingDQN, self).__init__()
-        self.conv1 = nn.Conv2d(4, 32, kernel_size=8, stride=4, bias=False)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2, bias=False)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, bias=False)
+
+        # Convolutional layers for feature extraction
+        self.conv1 = nn.Conv2d(4, 32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
 
         # Value stream layers
-        self.fc1_a = nn.Linear(64 * 7 * 7, 512)     # Advantage stream first dense layer
-        self.fc2_a = nn.Linear(512, n_actions)      # Advantage stream output layer
+        self.fc1_a = NoisyLinear(64 * 7 * 7, 512)     # Advantage stream first dense layer
+        self.fc2_a = NoisyLinear(512, n_actions)      # Advantage stream output layer
 
         # Advantage stream layers
-        self.fc1_b = nn.Linear(64 * 7 * 7, 512)     # State-value stream first dense layer
-        self.fc2_b = nn.Linear(512, 1)              # State-value stream output layer
+        self.fc1_b = NoisyLinear(64 * 7 * 7, 512)     # State-value stream first dense layer
+        self.fc2_b = NoisyLinear(512, 1)              # State-value stream output layer
 
         self.n_actions = n_actions
 
@@ -65,11 +67,19 @@ class DuelingDQN(nn.Module):
 
         # Advantage stream
         asa = F.relu(self.fc1_a(xv))
-        asa = F.relu(self.fc2_a(asa))
+        asa = self.fc2_a(asa)
 
         # Combine value and advantage streams
         # Q(s,a) = V(s) + (A(s,a) - mean(A(s,a)))
         return vs + asa - asa.mean(1).unsqueeze(1).expand(x.size(0), self.n_actions)
+
+    def reset_noise(self):
+        """_summary_
+        """
+        self.fc1_a.reset_noise()
+        self.fc2_a.reset_noise()
+        self.fc1_a.reset_noise()
+        self.fc2_b.reset_noise()
 
     def save_model(self, filename: str):
         """Save the model's state dict to a file.
@@ -83,7 +93,7 @@ class DuelingDQN(nn.Module):
 
         The model is loaded from the './models/' directory
         """
-        self.load_state_dict(torch.load('./models/' + filename + '.pth', weights_only=True))
+        self.load_state_dict(torch.load('./models/' + filename + '.pth'))
 
 def create_DQN_model(n_actions: int) -> DuelingDQN:
     """Create a new Dueling DQN model.
