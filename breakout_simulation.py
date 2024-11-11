@@ -17,7 +17,7 @@ class BreakoutTrainer:
             gamma: float = 0.99,
             batch_size: int = 32,
             memory_size: int = 100000,
-            target_update_frequency: int = 10000,
+            target_update_frequency: int = 5000,
             render_type: str = None,
             continue_training: bool = False,
             model_path: str = None,
@@ -63,7 +63,6 @@ class BreakoutTrainer:
 
         self.epoch_values = [0]
         self.std_values = [0]
-        self.quantile_values = [[0, 0]]
         self.max_rewards = [0]
         self.min_rewards = [0]
         self.mean_reward = 0
@@ -93,13 +92,24 @@ class BreakoutTrainer:
             state, _ = self.env.reset()
             done = False
             total_reward = 0.0
+            current_frame = step
+            last_lives = 5
+            override_action = False
 
-            while not done:
+            while not done and step < current_frame + 108_000:
                 # Get action and step environment
                 action = self.agent.get_action(state)
-                next_state, reward, terminated, truncated, _ = self.env.step(action)
+                if override_action:
+                    action = 1
+                    override_action = False
+
+                next_state, reward, terminated, truncated, info = self.env.step(action)
                 done = terminated or truncated
                 total_reward += reward
+
+                if last_lives != info["lives"]:
+                    override_action = True
+                    last_lives = info["lives"]
 
                 # Update agent
                 self.agent.update(state, action, reward, next_state, done)
@@ -114,13 +124,12 @@ class BreakoutTrainer:
                     max_reward = round(max(max_reward, total_reward), 2)
                     min_reward = round(min(min_reward, total_reward), 2)
                     std_reward = round(np.std(rewards_epoch).item(), 2)
-                    quantiles = np.percentile(rewards_epoch, [25, 75])
 
                     pbar.set_description(
-                        desc=f"Episode: {episode} (mean: {avg_reward}, std: {std_reward}, min: {min_reward}, max: {max_reward}, percentiles: {quantiles}) |"
+                        desc=f"Episode: {episode} (mean: {avg_reward}, std: {std_reward}, min: {min_reward}, max: {max_reward}) |"
                     )
 
-                # Print and save statistics (~ every 50000 batchs)
+                # Print and save statistics (every 50000 batchs)
                 if step % one_epoch == 0:
                     current_epoch = start_epoch + (len(self.epoch_values) - start_epoch)
 
@@ -128,24 +137,21 @@ class BreakoutTrainer:
                     max_reward = round(max(max_reward, total_reward), 2)
                     min_reward = round(min(min_reward, total_reward), 2)
                     std_reward = round(np.std(rewards_epoch).item(), 2)
-                    quantiles = np.percentile(rewards_epoch, [25, 75])
 
                     print(f"\n===== Epoch {current_epoch} stats =====")
                     print(f"Min reward: {min_reward}")
                     print(f"Max reward: {max_reward}")
                     print(f"Mean reward: {avg_reward}")
-                    print(f"Std reward: {std_reward}")
-                    print(f"Quantiles (25%, 75%): {quantiles}\n")
+                    print(f"Std reward: {std_reward}\n")
 
                     self.epoch_values.append(avg_reward)
                     self.std_values.append(std_reward)
-                    self.quantile_values.append(quantiles)
                     self.min_rewards.append(min_reward)
                     self.max_rewards.append(max_reward)
 
                     # Plot and save training progress
                     self._plot_progress()
-                    self._save_training_state(current_epoch, max_reward, min_reward)
+                    self._save_training_state(current_epoch)
 
                     rewards_epoch.clear()
                     max_reward = float('-inf')
@@ -158,7 +164,8 @@ class BreakoutTrainer:
                         self.mean_reward = self.epoch_values[-1]
                         save_max = True
                         print(f"==> New best model with avg reward: {self.mean_reward}")
-                    self.agent.update_target_network(save_max=save_max, max_reward=self.mean_reward)
+                    current_epoch = start_epoch + (len(self.epoch_values) - start_epoch)
+                    self.agent.update_target_network(current_epoch, save_max=save_max, max_reward=self.mean_reward)
 
 
 
@@ -191,21 +198,21 @@ class BreakoutTrainer:
         epochs = np.arange(len(self.epoch_values))
         epoch_values = np.array(self.epoch_values)
         std_dev = np.array(self.std_values)
-        quantiles = np.array(self.quantile_values)
         mins = np.array(self.min_rewards)
         maxs = np.array(self.max_rewards)
 
-        plt.plot(epochs, epoch_values, label="average reward", color='blue')
-        plt.plot(epochs, mins, label="minimum reward", color='cyan')
-        plt.plot(epochs, maxs, label="maximum reward", color='cyan')
+        plt.plot(epochs, epoch_values, label="average reward", color='blue', linewidth=2)
+        plt.plot(epochs, mins, label="minimum reward", color='red', linestyle='--', marker='o', markersize=2)
+        plt.plot(epochs, maxs, label="maximum reward", color='green', linestyle='--', marker='o', markersize=2)
         plt.fill_between(epochs, epoch_values - std_dev, epoch_values + std_dev,
-                     color='blue', alpha=0.2, label="std dev")
-        plt.plot(epochs, quantiles[:, 0], 'r--', label="25th percentile")
-        plt.plot(epochs, quantiles[:, 1], 'g--', label="75th percentile")
+                     color='blue', alpha=0.15, label="std dev")
+        plt.axhline(y=31.8, color='purple', linestyle='--', label="Human performance")
 
-        plt.title("Average reward with std dev quantiles on breakout")
+        plt.title("Average reward with std dev and extreme values on breakout")
         plt.xlabel("Training epochs")
         plt.ylabel("Average reward per episode")
+        plt.grid(visible=True, linestyle='--', linewidth=0.5)
+        plt.legend()
         plt.savefig(f"figures/reward_breakout_epoch_{len(self.epoch_values) - 1}.png")
         plt.close()
 
@@ -228,7 +235,7 @@ class BreakoutTrainer:
             print(f"Restored training from epoch {len(self.epoch_values)-1}")
             print(f"Previous max reward: {self.mean_reward}")
 
-    def _save_training_state(self, epoch: int, max_reward: int, min_reward: int):
+    def _save_training_state(self, epoch: int):
         """Save current training state including history.
 
         Args:
@@ -238,7 +245,6 @@ class BreakoutTrainer:
             'mean_rewards': self.epoch_values,
             'best_mean_reward': self.mean_reward,
             'std_values': self.std_values,
-            'quantile_values': self.quantile_values,
             'min_rewards': self.min_rewards,
             'max_rewards': self.max_rewards
         }

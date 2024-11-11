@@ -42,7 +42,7 @@ class DeepQLearningAgent():
 
         # Replay memory
         self.memory = PrioritizedReplayBuffer(
-            alpha=0.6, beta=0.5, storage=ListStorage(memory_size)
+            alpha=0.6, beta=0.4, storage=ListStorage(memory_size)
         )
 
         # Initialize networks and torch
@@ -52,7 +52,8 @@ class DeepQLearningAgent():
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate, eps=1.5e-4)
+        self.clip_grad = torch.nn.utils.clip_grad_norm_
         self.loss_fn = nn.MSELoss()
 
         # Print params
@@ -120,12 +121,13 @@ class DeepQLearningAgent():
         current_q_values = self.policy_net(states).gather(1, actions.unsqueeze(1))
         loss = self.loss_fn(current_q_values, target_q_values.unsqueeze(1))
 
-        # Optimize the policy network
+        # Optimize and stabilize the policy network
         self.optimizer.zero_grad()
         loss.backward()
+        self.clip_grad(self.policy_net.parameters(), max_norm=10.0)
         self.optimizer.step()
 
-    def update_target_network(self, save_max=False, max_reward=0):
+    def update_target_network(self, epoch, save_max=False, max_reward=0):
         """Update the target network by copying weights from policy network.
         Also saves the current model state.
 
@@ -134,7 +136,7 @@ class DeepQLearningAgent():
             max_reward (float, optional): Current max reward (for filename). Defaults to 0.
         """
         self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.policy_net.save_model("current_dueling_dqn")
+        self.policy_net.save_model(f"current_{epoch}_dueling_dqn")
 
         # Save the best model
         if save_max:
@@ -170,7 +172,7 @@ class DeepQLearningAgent():
 
         action = torch.tensor(action, dtype=torch.uint8)
         done = torch.tensor(done, dtype=torch.uint8)
-        reward = torch.tensor(reward, dtype=torch.int8)
+        reward = torch.tensor(reward, dtype=torch.float32)
         reward = torch.clip(input=reward, min=-1, max=1)
 
         self.memory.add((state, action, reward, next_state, done))

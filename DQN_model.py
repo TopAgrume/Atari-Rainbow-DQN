@@ -19,7 +19,7 @@ class DuelingDQN(nn.Module):
     Args:
         n_actions (int): Number of possible actions in the action space
     """
-    def __init__(self, n_actions: int):
+    def __init__(self, n_actions: int, std_init = 0.5):
         """Initialization of the Dueling DQN architecture.
 
         Args:
@@ -90,10 +90,8 @@ class DuelingDQN(nn.Module):
 
     def load_model(self, filename: str):
         """Load the model's state dict from a file.
-
-        The model is loaded from the './models/' directory
         """
-        self.load_state_dict(torch.load('./models/' + filename + '.pth'))
+        self.load_state_dict(torch.load(filename))
 
 def create_DQN_model(n_actions: int) -> DuelingDQN:
     """Create a new Dueling DQN model.
