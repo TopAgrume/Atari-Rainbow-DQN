@@ -33,12 +33,12 @@ def main():
 
     # Training arguments
     train_parser = subparsers.add_parser('train', help='Train the agent')
-    train_parser.add_argument('--learning-rate', type=float, default=0.0001)
+    train_parser.add_argument('--learning-rate', type=float, default=0.0000625)
     train_parser.add_argument('--gamma', type=float, default=0.99)
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--memory-size', type=int, default=100000)
     train_parser.add_argument('--target-update-frequency', type=int, default=5000)
-    train_parser.add_argument('--episodes', type=int, default=20000)
+    train_parser.add_argument('--episodes', type=int, default=500000)
     train_parser.add_argument('--epoch-size', type=int, default=50000)
     train_parser.add_argument('--continue_training', type=bool, default=False)
     train_parser.add_argument('--model-path', type=str, default=None)

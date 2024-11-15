@@ -53,7 +53,6 @@ class DeepQLearningAgent():
         self.target_net.eval()
 
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate, eps=1.5e-4)
-        self.clip_grad = torch.nn.utils.clip_grad_norm_
         self.loss_fn = nn.MSELoss()
 
         # Print params
@@ -124,7 +123,6 @@ class DeepQLearningAgent():
         # Optimize and stabilize the policy network
         self.optimizer.zero_grad()
         loss.backward()
-        self.clip_grad(self.policy_net.parameters(), max_norm=10.0)
         self.optimizer.step()
 
     def update_target_network(self, epoch, save_max=False, max_reward=0):
@@ -173,7 +171,6 @@ class DeepQLearningAgent():
         action = torch.tensor(action, dtype=torch.uint8)
         done = torch.tensor(done, dtype=torch.uint8)
         reward = torch.tensor(reward, dtype=torch.float32)
-        reward = torch.clip(input=reward, min=-1, max=1)
 
         self.memory.add((state, action, reward, next_state, done))
 

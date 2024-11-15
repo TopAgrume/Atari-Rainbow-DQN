@@ -1,3 +1,4 @@
+import PIL.Image
 import gymnasium as gym
 import numpy as np
 from deep_Q_learning_agent import DeepQLearningAgent
@@ -6,14 +7,14 @@ import ale_py
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import os
-
+from PIL import Image
 
 class BreakoutTrainer:
     """Handles training and evaluation of DQN agent for Atari Breakout."""
 
     def __init__(
             self,
-            learning_rate: float = 0.0001,
+            learning_rate: float = 0.0000625,
             gamma: float = 0.99,
             batch_size: int = 32,
             memory_size: int = 100000,
@@ -38,12 +39,12 @@ class BreakoutTrainer:
 
         if render_type is not None:
             print("Human rendering...")
-            self.env = gym.make("ALE/Breakout-v5", obs_type="grayscale", frameskip=4, render_mode=render_type)
+            self.env = gym.make("ALE/Breakout-v5", frameskip=4, repeat_action_probability=0, render_mode=render_type)
         else:
             print("Training rendering...")
-            self.env = gym.make("ALE/Breakout-v5", obs_type="grayscale", frameskip=4)
+            self.env = gym.make("ALE/Breakout-v5", frameskip=4, repeat_action_probability=0)
 
-        self.env = AtariPreprocessing(self.env, frame_skip=1, scale_obs=True)
+        self.env = AtariPreprocessing(self.env, grayscale_obs=True, frame_skip=1, scale_obs=True)
         self.env = gym.wrappers.FrameStackObservation(self.env, 4)
         n_actions = self.env.action_space.n
 
@@ -73,7 +74,7 @@ class BreakoutTrainer:
         print("Action meanings:", self.env.unwrapped.get_action_meanings())
         print("Target net update frquency:", target_update_frequency, end="\n\n")
 
-    def train(self, n_episodes: int = 20000, one_epoch: int = 50000):
+    def train(self, n_episodes: int = 500000, one_epoch: int = 50000):
         """Train the DQN agent on Breakout.
 
         Args:
@@ -87,29 +88,22 @@ class BreakoutTrainer:
         rewards_epoch = []
         start_epoch = len(self.epoch_values)
 
-        pbar = tqdm(range(n_episodes), desc="Starting")
+        pbar = tqdm(range(1, n_episodes), desc="Starting")
         for episode in pbar:
             state, _ = self.env.reset()
             done = False
             total_reward = 0.0
             current_frame = step
-            last_lives = 5
-            override_action = False
 
             while not done and step < current_frame + 108_000:
+                self.agent.policy_net.reset_noise()
+
                 # Get action and step environment
-                action = self.agent.get_action(state)
-                if override_action:
-                    action = 1
-                    override_action = False
-
+                action = 1 if step == current_frame else self.agent.get_action(state)
                 next_state, reward, terminated, truncated, info = self.env.step(action)
-                done = terminated or truncated
-                total_reward += reward
+                done = terminated or truncated or info['lives'] != 5
 
-                if last_lives != info["lives"]:
-                    override_action = True
-                    last_lives = info["lives"]
+                total_reward -= 1 if done else - max(-1, min(1, reward))
 
                 # Update agent
                 self.agent.update(state, action, reward, next_state, done)
@@ -179,10 +173,17 @@ class BreakoutTrainer:
             state, _ = self.env.reset()
             done = False
             total_reward = 0
+            overide_action = True
+            current_lives = 5
 
             while not done:
-                action = self.agent.get_action(state)
-                state, reward, terminated, truncated, _ = self.env.step(action)
+                action = 1 if overide_action else self.agent.get_action(state)
+                state, reward, terminated, truncated, info = self.env.step(action)
+
+                overide_action = current_lives != info['lives']
+                if overide_action:
+                    current_lives = info['lives']
+
                 done = terminated or truncated
                 total_reward += reward
 
