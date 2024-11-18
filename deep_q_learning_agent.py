@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import random
 import numpy as np
-from DQN_model import create_DQN_model
+from DuelingDQN_model import create_DQN_model
 from torchrl.data import ListStorage, PrioritizedReplayBuffer
 
 class DeepQLearningAgent():
