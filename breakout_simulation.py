@@ -28,11 +28,16 @@ class BreakoutTrainer:
         """Initialize the Breakout trainer.
 
         Args:
-            learning_rate: Learning rate for the Adam optimizer
-            gamma: Discount factor for future rewards
-            batch_size: Size of training batches
-            memory_size: Size of replay memory
-            target_update_frequency: How often to update target network
+            learning_rate (float): Learning rate for the Adam optimizer.
+            gamma (float): Discount factor for future rewards.
+            batch_size (int): Size of training batches.
+            memory_size (int): Size of the replay memory buffer.
+            target_update_frequency (int): Number of steps between updates to the target network.
+            render_type (str, optional): Rendering mode ('human' for live view or None).
+            continue_training (bool, optional): Whether to resume training from a saved model.
+            model_path (str, optional): Path to the saved model file for continued training.
+            history_path (str, optional): Path to the training history file for continued training.
+            replay_start_size (int): Minimum number of transitions in replay memory before training starts.
         """
         # Setup environment
         gym.register_envs(ale_py)
@@ -164,7 +169,7 @@ class BreakoutTrainer:
 
 
     def play_games(self, num_episodes: int = 5):
-        """Let the trained agent play games without learning.
+        """Play games without learning.
 
         Args:
             num_episodes (int): Number of episodes to play
@@ -233,7 +238,7 @@ class BreakoutTrainer:
             history_data = np.load(history_path, allow_pickle=True).item()
             self.epoch_values = history_data.get('reward', [0])
             self.mean_reward = history_data.get('mean_reward', 0)
-            print(f"Restored training from epoch {len(self.epoch_values)-1}")
+            print(f"Restored training from epoch {len(self.epoch_values) - 1}")
             print(f"Previous max reward: {self.mean_reward}")
 
     def _save_training_state(self, epoch: int):

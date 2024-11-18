@@ -28,6 +28,7 @@ def play(args):
     trainer.env.close()
 
 def main():
+    """Args parsing"""
     parser = argparse.ArgumentParser(description='DQN Breakout training and vizualisation')
     subparsers = parser.add_subparsers(dest='command', help='Possible commands:')
 
