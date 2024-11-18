@@ -1,10 +1,10 @@
-# Rainbow DQN Implementation for Atari Breakout
+# Classic / Rainbow DQN implementation for Atari Breakout
 
 This repository contains a PyTorch implementation of Rainbow DQN for Atari games, with a focus on Breakout. The implementation combines several key improvements to the original DQN algorithm proposed by the Rainbow DQN paper to achieve a better performance.
 
 https://github.com/user-attachments/assets/25b2bc87-4566-497c-8354-9f966379d341
 
-## Performance Results
+## Performance results
 
 After training for 5M steps on an RTX 3070Ti GPU, my implementation achieves the following clipped reward results on Breakout:
 
@@ -98,9 +98,7 @@ python main.py play --model-path=breakout_5M_raimbow_dqn.pth
 ```
 
 
-# Rainbow DQN Implementation for Atari Breakout
-
-## Hyperparameters
+# Hyperparameters for Atari Breakout
 
 | **Hyperparameter**                      | **Classic DQN**  | **Rainbow DQN**  |
 | --------------------------------------- | ---------------- | ---------------- |
