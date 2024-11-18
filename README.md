@@ -71,6 +71,7 @@ NoisyLinear layers for exploration
 
 ### Training
 ```bash
+cd rainbow_dqn
 python main.py train [options]
 
 # Training options:
@@ -86,11 +87,13 @@ python main.py train [options]
 
 ### Evaluation
 ```bash
+cd rainbow_dqn
 python main.py play --model-path=<path_to_model>
 ```
 
 Here, you can directly try this:
 ```bash
+cd rainbow_dqn
 python main.py play --model-path=saved_models/breakout_5M_rainbow_dqn.pth
 ```
 
