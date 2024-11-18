@@ -12,7 +12,7 @@ After training for 5M steps on an RTX 3070Ti GPU, my implementation achieves the
 |-------|------------|---------|-----|-----|
 | Random Agent | 1.364 | 1.394 | 0.0 | 7.0 |
 | Human Baseline | 31.8 | - | - | - |
-| Classic DQN | 14.211 | 5.852 | 0.0 | 25.0 |
+| Classic DQN | 14.211 | 5.852 | 0.0 | 30.0 |
 | Rainbow DQN | 74.242 | 32.931 | 8.0 | 104.0 |
 
 The maximal possible reward is 108 (game with 6*18=108 bricks).
