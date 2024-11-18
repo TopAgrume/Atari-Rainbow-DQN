@@ -17,7 +17,7 @@ After training for 5M steps on an RTX 3070Ti GPU, my implementation achieves the
 
 The maximal possible reward is 108 (game with 6*18=108 bricks).
 
-### Training progress (Classic DQN)
+### Training progress (Classic DQN ~10 hours)
 
 <p align="center">
   <img src="reward_image/reward_breakout_classic_dqn.png" alt="Classic DQN Training Progress" width="100%"/>
@@ -25,7 +25,7 @@ The maximal possible reward is 108 (game with 6*18=108 bricks).
   <em>Classic DQN learning curve (each epoch represent 50,000 batches)</em>
 </p>
 
-### Training progress (Rainbow DQN)
+### Training progress (Rainbow DQN ~14 hours)
 
 <p align="center">
   <img src="reward_image/reward_breakout_rainbow.png" alt="Rainbow DQN Training Progress" width="100%"/>
@@ -90,6 +90,11 @@ python main.py train [options]
 ### Evaluation
 ```bash
 python main.py play --model-path=<path_to_model>
+```
+
+Here, you can directly try this:
+```bash
+python main.py play --model-path=breakout_5M_raimbow_dqn.pth
 ```
 
 
