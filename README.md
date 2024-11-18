@@ -51,7 +51,6 @@ The maximal possible reward is 108 (game with 6*18=108 bricks).
 ### 3. Classic network architecture
 ```
 Conv2D(4→16, kernel=4, stride=2)
-    ↓
 Conv2D(16→32, kernel=4, stride=2)
     ↓
 Linear layers
@@ -60,9 +59,7 @@ Linear layers
 ### 4. Rainbow network architecture
 ```
 Conv2D(4→32, kernel=8, stride=4)
-    ↓
 Conv2D(32→64, kernel=4, stride=2)
-    ↓
 Conv2D(64→64, kernel=3, stride=1)
     ↓
 Split into Value/Advantage Streams
