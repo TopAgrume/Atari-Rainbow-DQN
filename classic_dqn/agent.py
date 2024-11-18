@@ -19,16 +19,6 @@ class DeepQLearningAgent():
         batch_size: int = 32,
         memory_size: int = 100000
     ):
-        """_summary_
-
-        Args:
-            learning_rate (float): _description_
-            epsilon (float): _description_
-            gamma (float): _description_
-            n_actions (int): _description_
-            batch_size (int, optional): _description_. Defaults to 32.
-            memory_size (int, optional): _description_. Defaults to 100000.
-        """
         self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.gamma = gamma
@@ -59,16 +49,10 @@ class DeepQLearningAgent():
 
 
     def get_action(self, state: State) -> Action:
-        """_summary_
-
-        Args:
-            state (State): _description_
-
-        Returns:
-            Action: _description_
-        """
+        # Exploration
         if random.random() < self.epsilon:
             return random.randint(0, self.n_actions - 1)
+        # Exploitation
         else:
             with torch.no_grad():
                 state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
@@ -78,14 +62,7 @@ class DeepQLearningAgent():
                 return q_values.argmax().item()
 
     def update(self, state, action, reward, next_state, done):
-        """_summary_
-
-        Args:
-            state (_type_): _description_
-            action (_type_): _description_
-            reward (_type_): _description_
-            next_state (_type_): _description_
-            done (function): _description_
+        """Train the model
         """
         reward = max(min(reward, 1.0), -1.0)
         self.memory.append((state, action, reward, next_state, done))
@@ -117,10 +94,7 @@ class DeepQLearningAgent():
         self.optimizer.step()
 
     def update_target_network(self, save_max=False, max_reward=0, epoch=0):
-        """_summary_
-
-        Args:
-            save_max (bool, optional): _description_. Defaults to False.
+        """Update target network
         """
         self.target_net.load_state_dict(self.policy_net.state_dict())
         torch.save(self.policy_net.state_dict(), f"models/model_{epoch}_state_dict.pt")

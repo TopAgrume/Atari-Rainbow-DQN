@@ -8,14 +8,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 def preprocess_observation(obs):
-    """_summary_
-
-    Args:
-        obs (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     return np.array(obs).astype(np.float32) / 255.0
 
 def main():

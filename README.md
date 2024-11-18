@@ -55,6 +55,7 @@ Conv2D(16→32, kernel=4, stride=2)
     ↓
 Linear layers
 ```
+See: classic_dqn/dqn.py
 
 ### 4. Rainbow network architecture
 ```
@@ -66,6 +67,7 @@ Split into Value/Advantage Streams
     ↓
 NoisyLinear layers for exploration
 ```
+See: rainbow_dqn/DuelingDQN_model.py
 
 ## Usage
 
