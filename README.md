@@ -96,7 +96,7 @@ python main.py play --model-path=<path_to_model>
 Here, you can directly try this:
 ```bash
 cd rainbow_dqn
-python main.py play --model-path=saved_models/breakout_5M_rainbow_dqn.pth
+python main.py play --model-path=saved_models/breakout_5M_steps_rainbow_dqn
 ```
 
 
