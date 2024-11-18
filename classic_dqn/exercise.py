@@ -28,7 +28,7 @@ def main():
     print("Available actions:", env.unwrapped.get_action_meanings(), end="\n\n")
 
     agent = DeepQLearningAgent(
-        learning_rate=0.0000625,
+        learning_rate=0.0001,
         epsilon=1.0,
         gamma=0.99,
         n_actions=n_actions,

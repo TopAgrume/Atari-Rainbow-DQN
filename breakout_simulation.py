@@ -1,7 +1,6 @@
-import PIL.Image
 import gymnasium as gym
 import numpy as np
-from deep_Q_learning_agent import DeepQLearningAgent
+from deep_q_learning_agent import DeepQLearningAgent
 from gymnasium.wrappers import AtariPreprocessing
 import ale_py
 from tqdm import tqdm
