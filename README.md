@@ -6,14 +6,14 @@ https://github.com/user-attachments/assets/b8180e58-7f20-4650-8148-2060d174038c
 
 ## Performance results
 
-After training for 5M steps on an RTX 3070Ti GPU, my implementation achieves the following clipped reward results on Breakout:
+After training for 5M steps on an RTX 3070Ti GPU (and 16Go RAM), my implementation achieves the following clipped reward results on Breakout:
 
 | Agent | Mean Score | Std Dev | Min | Max |
 |-------|------------|---------|-----|-----|
 | Random Agent | 1.364 | 1.394 | 0.0 | 7.0 |
 | Human Baseline | 31.8 | - | - | - |
 | Classic DQN | 14.211 | 5.852 | 0.0 | 28.0 |
-| Rainbow DQN | 70.242 | 32.931 | 8.0 | 104.0 |
+| Rainbow DQN | 70.242 | 32.931 | 8.0 | 105.0 |
 
 The maximal possible reward is 108 (game with 6*18=108 bricks).
 
