@@ -2,9 +2,7 @@
 
 This repository contains a PyTorch implementation of Rainbow DQN for Atari games, with a focus on Breakout. The implementation combines several key improvements to the original DQN algorithm proposed by the Rainbow DQN paper to achieve a better performance.
 
-<p align="center">
-  <img src="videos/breakout_dqn.gif" alt="Rainbow DQN playing Breakout" width="400"/>
-</p>
+https://github.com/user-attachments/assets/68143d23-5d94-4f15-a5ff-589d7736d4f2
 
 ## Performance Results
 
