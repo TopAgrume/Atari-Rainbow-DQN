@@ -24,7 +24,7 @@ The maximal possible reward is 108 (game with 6*18=108 bricks).
 <p align="center">
   <img src="reward_image/reward_breakout_classic_dqn.png" alt="Classic DQN Training Progress" width="100%"/>
   <br>
-  <em>Classic DQN learning curve</em>
+  <em>Classic DQN learning curve (each epoch represent 50,000 batches)</em>
 </p>
 
 ### Training progress (Rainbow DQN)
@@ -32,7 +32,7 @@ The maximal possible reward is 108 (game with 6*18=108 bricks).
 <p align="center">
   <img src="reward_image/reward_breakout_rainbow.png" alt="Rainbow DQN Training Progress" width="100%"/>
   <br>
-  <em>Rainbow DQN learning curve</em>
+  <em>Rainbow DQN learning curve (each epoch represent 50,000 batches)</em>
 </p>
 
 ## Key features
