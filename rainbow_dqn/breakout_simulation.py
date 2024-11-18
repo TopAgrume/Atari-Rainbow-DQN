@@ -43,7 +43,7 @@ class BreakoutTrainer:
 
         if render_type is not None:
             print("Human rendering...")
-            self.env = gym.make("ALE/Breakout-v5", frameskip=4, repeat_action_probability=0, render_mode=render_type)
+            self.env = gym.make("ALE/Breakout-v5", frameskip=4, render_mode=render_type)
         else:
             print("Training rendering...")
             self.env = gym.make("ALE/Breakout-v5", frameskip=4, repeat_action_probability=0)
