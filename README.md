@@ -6,7 +6,7 @@ https://github.com/user-attachments/assets/b8180e58-7f20-4650-8148-2060d174038c
 
 ## Performance results
 
-After training for 5M steps on an RTX 3070Ti GPU (and 16Go RAM), my implementation achieves the following clipped reward results on Breakout:
+After training for 5M steps on an RTX 3070 GPU (and 16Go RAM), my implementation achieves the following clipped reward results on Breakout:
 
 | Agent | Mean Score | Std Dev | Min | Max |
 |-------|------------|---------|-----|-----|
